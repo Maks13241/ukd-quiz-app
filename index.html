@@ -1,51 +1,150 @@
-// ... (стилі залишаються ті самі)
-<script>
-    let tg = window.Telegram.WebApp;
-    tg.expand();
-    tg.ready();
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const dataParam = urlParams.get('data');
-
-    let questions = [];
-    let currentQ = 0;
-    let score = 0;
-
-    if (dataParam) {
-        try {
-            questions = JSON.parse(decodeURIComponent(dataParam));
-        } catch(e) {
-            document.getElementById('quiz-container').innerHTML = "Помилка завантаження";
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>УКД AI-Екзаменатор</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
         }
-    }
-
-    function renderQuestion() {
-        if(currentQ >= questions.length) {
-            document.getElementById('quiz-container').innerHTML = `<h2>Фініш! 🎉</h2><p>Результат: ${score}/${questions.length}</p><button class='btn' onclick='tg.close()'>Закрити</button>`;
-            return;
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            margin-top: 20px;
+            text-align: center;
         }
-        
-        const q = questions[currentQ];
-        // Використовуємо нові ключі q, a, c
-        let html = `<h2>${q.q}</h2>`;
-        q.a.forEach((opt, idx) => {
-            html += `<button class='btn' onclick='answer(${idx}, ${q.c})'>${opt}</button>`;
-        });
-        
-        document.getElementById('progress').style.width = ((currentQ / questions.length) * 100) + '%';
-        document.getElementById('quiz-container').innerHTML = html;
-    }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        .progress {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #22d3ee, #818cf8);
+            transition: width 0.4s ease;
+        }
+        h2 {
+            font-size: 20px;
+            line-height: 1.4;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 16px;
+            border-radius: 16px;
+            width: 100%;
+            margin-top: 12px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+        .btn:active {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
+            transform: scale(0.98);
+        }
+        .score-box {
+            font-size: 24px;
+            font-weight: bold;
+            color: #22d3ee;
+            margin: 20px 0;
+        }
+        .finish-btn {
+            background: #6366f1;
+            border: none;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="progress-bar"><div class="progress" id="progress"></div></div>
+        <div id="quiz-container">
+            <h2>⏳ Завантаження тесту...</h2>
+        </div>
+    </div>
 
-    function answer(selected, correct) {
-        if(selected === correct) {
-            score++;
-            tg.HapticFeedback.notificationOccurred('success');
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataParam = urlParams.get('data');
+
+        let questions = [];
+        let currentQ = 0;
+        let score = 0;
+
+        if (dataParam) {
+            try {
+                // Розкодовуємо та парсимо JSON
+                questions = JSON.parse(decodeURIComponent(dataParam));
+            } catch(e) {
+                document.getElementById('quiz-container').innerHTML = "<h2>❌ Помилка завантаження</h2>";
+            }
         } else {
-            tg.HapticFeedback.notificationOccurred('error');
+            document.getElementById('quiz-container').innerHTML = "<h2>🔍 Тест не знайдено</h2>";
         }
-        currentQ++;
-        renderQuestion();
-    }
 
-    if(questions.length > 0) renderQuestion();
-</script>
+        function renderQuestion() {
+            if(currentQ >= questions.length) {
+                document.getElementById('quiz-container').innerHTML = `
+                    <div class="score-box">🎉 Тест завершено!</div>
+                    <p style="color: #94a3b8">Твій результат: ${score} з ${questions.length}</p>
+                    <button class='btn finish-btn' onclick='tg.close()'>ЗАКРИТИ</button>
+                `;
+                return;
+            }
+            
+            const qData = questions[currentQ];
+            // Використовуємо ключі 'q', 'a' та 'c'
+            let html = `<h2>${qData.q}</h2>`;
+            qData.a.forEach((option, index) => {
+                html += `<button class='btn' onclick='answer(${index}, ${qData.c})'>${option}</button>`;
+            });
+            
+            document.getElementById('progress').style.width = ((currentQ / questions.length) * 100) + '%';
+            document.getElementById('quiz-container').innerHTML = html;
+        }
+
+        function answer(selected, correct) {
+            if(selected === correct) {
+                score++;
+                tg.HapticFeedback.notificationOccurred('success');
+            } else {
+                tg.HapticFeedback.notificationOccurred('error');
+            }
+            currentQ++;
+            setTimeout(renderQuestion, 200);
+        }
+
+        if(questions.length > 0) renderQuestion();
+    </script>
+</body>
+</html>
